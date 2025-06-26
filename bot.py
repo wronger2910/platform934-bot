@@ -1,19 +1,24 @@
 import logging
 import random
 import re
+import os
+import json
 from aiogram import Bot, Dispatcher, executor, types
-
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 # --- Google Sheets Setup ---
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(
+    json.loads(os.environ["GOOGLE_CREDENTIALS_JSON"]), scope
+)
+
 client = gspread.authorize(creds)
 sheet = client.open_by_key("1TIGUiDIbCmHkqX3MUm4tqhNrKH1RQHkX-zD7ZvAWaE0").worksheet("Лист1")
 
 # --- Telegram Bot Setup ---
-API_TOKEN = '8049413836:AAEH9fVX7cyDQpk99sxnzszs8vdZ21zFrMk'
+API_TOKEN = os.getenv("BOT_TOKEN", "ТВОЙ_ТОКЕН_ЗДЕСЬ")
 
 logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
@@ -35,7 +40,7 @@ prizes = [
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     user_id = message.from_user.id
-    args = message.get_args()  # ← Вот здесь мы берём ?start=...
+    args = message.get_args()
     user_data[user_id] = {
         'username': message.from_user.username,
         'source': args if args else 'не указан'
@@ -126,5 +131,6 @@ def save_to_google_sheet(user_id):
         print(f"[✅ Данные добавлены в таблицу] {data.get('name')} | Источник: {data.get('source')}")
     except Exception as e:
         print(f"[⚠️ Ошибка при записи в таблицу] {e}")
+
 if __name__ == '__main__':
     executor.start_polling(dp, skip_updates=True)
